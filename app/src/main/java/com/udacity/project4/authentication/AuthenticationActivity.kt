@@ -4,8 +4,10 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
+import androidx.lifecycle.Observer
 import com.firebase.ui.auth.AuthUI
 import com.firebase.ui.auth.IdpResponse
 import com.google.firebase.auth.FirebaseAuth
@@ -23,18 +25,34 @@ class AuthenticationActivity : AppCompatActivity() {
         val TAG: String = AuthenticationActivity::class.java.simpleName
         const val SIGN_IN_RESULT_CODE = 1001
     }
-
+    private val viewModel by viewModels<AuthenticationViewModel>()
     private lateinit var binding: ActivityAuthenticationBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = DataBindingUtil.setContentView(this, R.layout.activity_authentication)
 
-        binding.loginButton.setOnClickListener {
-            launchSignInFlow()
+        binding.viewModel= viewModel
 
-        }
+        viewModel.authenticationState.observe(this, Observer { authenticationState ->
+            when (authenticationState) {
+                AuthenticationViewModel.AuthenticationState.AUTHENTICATED -> {
+                    // There is an authenticated user, go to RemindersActivity
+                    val intent = Intent(this, RemindersActivity::class.java)
+                    startActivity(intent)
+                    finish()
+                }
+                else -> {
+                    // There is no authenticated user,
+                    // set the login button to launch the sign in process
+                    binding.loginButton.setOnClickListener{
+                        launchSignInFlow()
+                    }
+                }
+            }
+        })
     }
+
 
     private fun launchSignInFlow() {
         val providers = arrayListOf(
@@ -67,9 +85,9 @@ class AuthenticationActivity : AppCompatActivity() {
                     TAG,
                     "Successfully signed in user ${FirebaseAuth.getInstance().currentUser?.displayName}!"
                 )
-                val intent = Intent(this, RemindersActivity::class.java)
+               /* val intent = Intent(this, RemindersActivity::class.java)
                 startActivity(intent)
-                finish()
+                finish()*/
             } else {
                 // Sign in failed. If response is null the user canceled the
                 // sign-in flow using the back button. Otherwise check
