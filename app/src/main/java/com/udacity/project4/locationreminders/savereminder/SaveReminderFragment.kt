@@ -14,7 +14,6 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.databinding.DataBindingUtil
 import com.google.android.gms.common.api.ResolvableApiException
@@ -29,7 +28,7 @@ import com.udacity.project4.locationreminders.geofence.GeofenceBroadcastReceiver
 import com.udacity.project4.locationreminders.reminderslist.ReminderDataItem
 import com.udacity.project4.utils.setDisplayHomeAsUpEnabled
 import org.koin.android.ext.android.inject
-import java.util.concurrent.TimeUnit
+
 
 class SaveReminderFragment : BaseFragment() {
     //Get the view model this time as a single to be shared with the another fragment
@@ -45,7 +44,7 @@ class SaveReminderFragment : BaseFragment() {
     private val geofencePendingIntent: PendingIntent by lazy {
         val intent = Intent(requireContext(), GeofenceBroadcastReceiver::class.java)
         intent.action = ACTION_GEOFENCE_EVENT
-        PendingIntent.getBroadcast(requireContext(), 0, intent, PendingIntent.FLAG_CANCEL_CURRENT)
+        PendingIntent.getBroadcast(requireActivity(), 0, intent, PendingIntent.FLAG_CANCEL_CURRENT)
     }
 
 
@@ -59,6 +58,8 @@ class SaveReminderFragment : BaseFragment() {
         setDisplayHomeAsUpEnabled(true)
 
         binding.viewModel = _viewModel
+        geofencingClient = LocationServices.getGeofencingClient(requireContext())
+
 
         return binding.root
     }
@@ -227,13 +228,14 @@ class SaveReminderFragment : BaseFragment() {
     @SuppressLint("MissingPermission")
     private fun addGeofenceForClue(reminderDataItem: ReminderDataItem) {
         // Add in code to add the geofence
+
         val geofence = Geofence.Builder()
             .setRequestId(reminderDataItem.id)
             .setCircularRegion(reminderDataItem.latitude!!,
                 reminderDataItem.longitude!!,
                 100f
             )
-            .setExpirationDuration(TimeUnit.HOURS.toMillis(1))
+            .setExpirationDuration(Geofence.NEVER_EXPIRE)
             .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
             .build()
 
@@ -242,24 +244,16 @@ class SaveReminderFragment : BaseFragment() {
             .addGeofence(geofence)
             .build()
 
-        geofencingClient.removeGeofences(geofencePendingIntent)?.run {
-            addOnCompleteListener {
-                geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent)?.run {
-                    addOnSuccessListener {
-                        Toast.makeText(
-                            requireContext(), R.string.geofence_entered,
-                            Toast.LENGTH_SHORT
-                        )
-                            .show()
-                        Log.e("Add Geofence", geofence.requestId)
-                    }
-                    addOnFailureListener {
-                        Toast.makeText(
-                            requireContext(), R.string.geofences_not_added,
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        it.message?.let { message -> Log.w(TAG, message) }
-                    }
+        val intent = Intent(requireContext(), GeofenceBroadcastReceiver::class.java)
+        intent.action = ACTION_GEOFENCE_EVENT
+
+        geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent)?.run {
+            addOnSuccessListener {
+                Log.i("BroadcastReceiver", "added geofences" + reminderDataItem.latitude + " " + reminderDataItem.longitude)
+            }
+            addOnFailureListener {
+                if ((it.message != null)) {
+                    Log.w(TAG, it.message!!)
                 }
             }
         }

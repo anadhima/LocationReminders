@@ -5,6 +5,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.content.res.Resources
+import android.location.Location
 import android.os.Bundle
 import android.util.Log
 import android.view.*
@@ -23,6 +24,7 @@ import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PointOfInterest
 import com.udacity.project4.R
 import com.udacity.project4.base.BaseFragment
+import com.udacity.project4.base.NavigationCommand
 import com.udacity.project4.databinding.FragmentSelectLocationBinding
 import com.udacity.project4.locationreminders.savereminder.SaveReminderViewModel
 import com.udacity.project4.utils.setDisplayHomeAsUpEnabled
@@ -34,8 +36,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
 
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
     private lateinit var map: GoogleMap
-    private var poi: PointOfInterest? = null
-
+    private lateinit var pointOfInterest: PointOfInterest
     //Use Koin to get the view model of the SaveReminder
     override val _viewModel: SaveReminderViewModel by inject()
     private lateinit var binding: FragmentSelectLocationBinding
@@ -69,12 +70,13 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
     }
 
     private fun onLocationSelected() {
-        _viewModel.selectedPOI.value = poi
-        _viewModel.reminderSelectedLocationStr.value = poi?.name
-        _viewModel.latitude.value = poi?.latLng?.latitude
-        _viewModel.longitude.value = poi?.latLng?.longitude
-        findNavController().navigateUp()
+        _viewModel.selectedPOI.value = pointOfInterest
+        _viewModel.reminderSelectedLocationStr.value = pointOfInterest.name
+        _viewModel.latitude.value = pointOfInterest.latLng.latitude
+        _viewModel.longitude.value = pointOfInterest.latLng.longitude
+        _viewModel.navigationCommand.value = NavigationCommand.Back
     }
+
 
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -146,6 +148,13 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
                 latLng.latitude,
                 latLng.longitude
             )
+            binding.saveButton.setOnClickListener {
+                _viewModel.latitude.value = latLng.latitude
+                _viewModel.longitude.value = latLng.longitude
+                _viewModel.reminderSelectedLocationStr.value = getString(R.string.dropped_pin)
+                _viewModel.navigationCommand.value = NavigationCommand.Back
+            }
+
             map.addMarker(
                 MarkerOptions()
                     .position(latLng)
@@ -159,6 +168,8 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
     //Put a marker to location that the user selected
     private fun setPoiClick(map: GoogleMap) {
         map.setOnPoiClickListener { poi ->
+            map.clear()
+            pointOfInterest = poi
             val poiMarker = map.addMarker(
                 MarkerOptions()
                     .position(poi.latLng)
@@ -223,7 +234,6 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
             }
 
     }
-
 
     companion object {
         // New variables for Current Place Picker
